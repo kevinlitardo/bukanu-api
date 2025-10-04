@@ -1,0 +1,358 @@
+import { PrismaService } from 'prisma/prisma.service';
+import { User } from '@clerk/express';
+import resend from 'src/common/lib/resend';
+import { add, format } from 'date-fns';
+import { InternalServerErrorException } from '@nestjs/common';
+
+export default async function deleteBusinessUseCase(
+  prisma: PrismaService,
+  slug: string,
+  user: User,
+) {
+  try {
+    const business = await prisma.business.update({
+      where: { slug, owner: { auth_id: user.id } },
+      data: {
+        status: 'UNACTIVE',
+        deletedAt: new Date(),
+      },
+      include: {
+        _count: {
+          select: {
+            workers: true,
+            services: true,
+          },
+        },
+      },
+    });
+
+    if (!business) {
+      throw new InternalServerErrorException('No se pudo encontrar el negocio');
+    }
+
+    let html = `
+			<!doctype html>
+			<html lang="es">
+				<head>
+					<meta charset="UTF-8" />
+					<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+					<title>Notificación de Eliminación de Negocio</title>
+					<style>
+						body {
+							margin: 0;
+							padding: 0;
+							font-family:
+								-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+							background-color: #f9fafb;
+							line-height: 1.6;
+						}
+						.container {
+							max-width: 600px;
+							margin: 0 auto;
+							background-color: #ffffff;
+						}
+						.header {
+							background: #dc2626;
+							padding: 32px 24px;
+							text-align: center;
+						}
+						.content {
+							padding: 32px 24px;
+						}
+						.warning-box {
+							background-color: #fef2f2;
+							border: 1px solid #fecaca;
+							border-radius: 8px;
+							padding: 20px;
+							margin: 24px 0;
+						}
+						.info-card {
+							background-color: #f9fafb;
+							border-radius: 8px;
+							padding: 20px;
+							border: 1px solid #e5e7eb;
+						}
+						.timeline {
+							background-color: #fef2f2;
+							border-radius: 8px;
+							padding: 24px;
+							margin: 24px 0;
+							border-left: 4px solid #dc2626;
+						}
+						.restore-button {
+							display: inline-block;
+							background: rgb(112, 51, 255);
+							color: white;
+							padding: 16px 32px;
+							text-decoration: none;
+							border-radius: 8px;
+							font-weight: 600;
+							text-align: center;
+							margin: 24px 0;
+						}
+						.footer {
+							background-color: #f9fafb;
+							padding: 24px;
+							text-align: center;
+							border-top: 1px solid #e5e7eb;
+							color: #6b7280;
+							font-size: 14px;
+						}
+						@media (max-width: 600px) {
+							.content {
+								padding: 24px 16px;
+							}
+						}
+					</style>
+				</head>
+				<body>
+					<div class="container">
+						<!-- Header con Logo -->
+						<div class="header">
+							<img
+								src="https://bukanu.com/bukanu.webp"
+								alt="Logo de la empresa"
+								style="height: 48px; margin-bottom: 16px"
+							/>
+							<h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700">
+								Notificación Importante
+							</h1>
+						</div>
+
+						<!-- Contenido Principal -->
+						<div class="content">
+							<!-- Mensaje de Advertencia -->
+							<div class="warning-box">
+								<h2
+									style="
+										color: #dc2626;
+										margin: 0 0 12px 0;
+										font-size: 20px;
+										font-weight: 600;
+									"
+								>
+									Su negocio será eliminado en 7 días
+								</h2>
+								<p style="color: #374151; margin: 0; font-size: 16px">
+									Estimado/a <strong>{{USER_NAME}}</strong>, le informamos que su
+									negocio <strong>"{{BUSINESS_NAME}}"</strong> ha sido marcado para
+									eliminación desde la aplicación web/móvil. Para cancelar esta acción
+									visita el link provisto en la parte inferior. Si estás de acuerdo
+									con esta accion puedes ignorar el correo.
+								</p>
+							</div>
+
+							<div class="info-card">
+								<!-- Información del Usuario -->
+								<h3
+									style="
+										color: #1f2937;
+										font-size: 18px;
+										font-weight: 600;
+										margin: 0 0 8px;
+									"
+								>
+									Información del Usuario
+								</h3>
+								<div>
+									<p style="margin: 8px 0; color: #4b5563; font-size: 14px">
+										<strong>Nombre:</strong> {{USER_NAME}}
+									</p>
+									<p style="margin: 8px 0; color: #4b5563; font-size: 14px">
+										<strong>Email:</strong> {{USER_EMAIL}}
+									</p>
+								</div>
+
+								<hr style="margin: 16px 0" />
+
+								<!-- Información del Negocio -->
+								<h3
+									style="
+										color: #1f2937;
+										font-size: 18px;
+										font-weight: 600;
+										margin: 0 0 8px;
+									"
+								>
+									Información del Negocio
+								</h3>
+								<div>
+									<p style="margin: 8px 0; color: #4b5563; font-size: 14px">
+										<strong>Nombre:</strong> {{BUSINESS_NAME}}
+									</p>
+									<p style="margin: 8px 0; color: #4b5563; font-size: 14px">
+										<strong>Trabajadores:</strong> {{BUSINESS_WORKERS_COUNT}}
+									</p>
+									<p style="margin: 8px 0; color: #4b5563; font-size: 14px">
+										<strong>Servicios:</strong> {{BUSINESS_SERVICES_COUNT}}
+									</p>
+									<p style="margin: 8px 0; color: #4b5563; font-size: 14px">
+										<strong>Fecha de Creación:</strong> {{BUSINESS_CREATED_AT}}
+									</p>
+								</div>
+							</div>
+
+							<!-- Cronograma de Eliminación -->
+							<div class="timeline">
+								<h3
+									style="
+										color: #dc2626;
+										margin: 0 0 16px 0;
+										font-size: 18px;
+										font-weight: 600;
+									"
+								>
+									Cronograma de Eliminación
+								</h3>
+								<div
+									style="
+										background-color: white;
+										border-radius: 6px;
+										padding: 16px;
+										border: 1px solid #fecaca;
+									"
+								>
+									<p
+										style="
+											margin: 0 0 12px 0;
+											color: #374151;
+											font-size: 16px;
+											font-weight: 600;
+										"
+									>
+										Fecha de eliminación programada:
+										<span style="color: #dc2626">{{SCHEDULED_DATE}}</span>
+									</p>
+									<p style="margin: 0; color: #6b7280; font-size: 14px">
+										Después de esta fecha, todos los datos de su negocio serán
+										eliminados permanentemente y no podrán ser recuperados.
+									</p>
+								</div>
+							</div>
+
+							<!-- Acción Requerida -->
+							<div style="text-align: center; margin: 32px 0">
+								<h3
+									style="
+										color: #1f2937;
+										margin: 0 0 16px 0;
+										font-size: 20px;
+										font-weight: 600;
+									"
+								>
+									¿Desea mantener su negocio activo?
+								</h3>
+								<p style="color: #4b5563; margin: 0 0 24px 0; font-size: 16px">
+									Si desea conservar su negocio en nuestra plataforma, puede
+									restaurarlo haciendo clic en el siguiente botón:
+								</p>
+
+								<a href="{{RESTORE_LINK}}" class="restore-button">
+									Restaurar Mi Negocio
+								</a>
+
+								<p style="color: #6b7280; margin: 16px 0 0 0; font-size: 14px">
+									Este enlace estará disponible hasta antes de la fecha programada
+									para eliminación.
+								</p>
+							</div>
+
+							<!-- Información Adicional -->
+							<div
+								style="
+									background-color: #f0f9ff;
+									border: 1px solid #bae6fd;
+									border-radius: 8px;
+									padding: 20px;
+									margin: 24px 0;
+								"
+							>
+								<h4
+									style="
+										color: #0369a1;
+										margin: 0 0 12px 0;
+										font-size: 16px;
+										font-weight: 600;
+									"
+								>
+									Información Importante
+								</h4>
+								<ul
+									style="
+										color: #374151;
+										margin: 0;
+										padding-left: 20px;
+										font-size: 14px;
+									"
+								>
+									<li style="margin-bottom: 8px">
+										Una vez restaurado, su negocio volverá a estar completamente
+										activo
+									</li>
+									<li style="margin-bottom: 8px">
+										Todos sus datos y configuraciones se mantendrán intactos
+									</li>
+									<li style="margin-bottom: 8px">
+										No se aplicarán cargos adicionales por la restauración
+									</li>
+									<li>Si tiene preguntas, contacte a nuestro equipo de soporte</li>
+								</ul>
+							</div>
+						</div>
+
+						<!-- Footer -->
+						<div class="footer">
+							<p style="margin: 0 0 8px 0">
+								<strong>Bukanu</strong>
+							</p>
+							<p style="margin: 0 0 8px 0">
+								Si tiene alguna pregunta, contáctenos en:
+								<a href="mailto:{{SUPPORT_EMAIL}}" style="color: #2563eb"
+									>{{SUPPORT_EMAIL}}</a
+								>
+							</p>
+							<p style="margin: 0; font-size: 12px">
+								Este es un mensaje automático, por favor no responda a este email.
+							</p>
+						</div>
+					</div>
+				</body>
+			</html>
+		`;
+
+    html = html
+      .replace(
+        /{{USER_NAME}}/g,
+        `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
+      )
+      .replace(/{{USER_EMAIL}}/g, user.emailAddresses[0].emailAddress)
+      .replace(/{{BUSINESS_NAME}}/g, business.name)
+      .replace(
+        /{{BUSINESS_WORKERS_COUNT}}/g,
+        business._count.workers.toString(),
+      )
+      .replace(
+        /{{BUSINESS_SERVICES_COUNT}}/g,
+        business._count.services.toString(),
+      )
+      .replace(/{{BUSINESS_CREATED_AT}}/g, format(business.created_at, 'PPP'))
+      .replace(
+        /{{SCHEDULED_DATE}}/g,
+        format(add(business.deletedAt || new Date(), { days: 7 }), 'PPP'),
+      )
+      .replace(
+        /{{RESTORE_LINK}}/g,
+        `${process.env.WEB_APP_BASE_URL}/dashboard/${business.slug}/restaurar`,
+      )
+      .replace(/{{SUPPORT_EMAIL}}/g, `support@bukanu.com`);
+
+    await resend.emails.send({
+      from: 'Bukanu <support@bukanu.com>',
+      to: [user.emailAddresses[0].emailAddress],
+      subject: 'Tu negocio será eliminado pronto de Bukanu',
+      html: html,
+    });
+  } catch (error) {
+    throw error;
+  }
+}
