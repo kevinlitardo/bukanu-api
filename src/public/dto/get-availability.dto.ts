@@ -1,14 +1,5 @@
-import {
-  ArrayMinSize,
-  IsArray,
-  IsDate,
-  IsOptional,
-  IsString,
-  Length,
-  Matches,
-  MaxLength,
-} from 'class-validator';
-import { TIEMPO } from 'src/common/lib/regex';
+import { Transform } from 'class-transformer';
+import { IsDate, IsOptional, IsString } from 'class-validator';
 
 export class GetAvailabilityDto {
   @IsString()
@@ -18,22 +9,23 @@ export class GetAvailabilityDto {
   @IsOptional()
   worker_id?: string;
 
-  @IsArray()
-  @IsString({ each: true })
-  @ArrayMinSize(1, { message: 'Debes seleccionar al menos un servicio' })
-  services: string;
+  // @IsArray()
+  // @IsString({ each: true })
+  // @ArrayMinSize(1, { message: 'Debes seleccionar al menos un servicio' })
+  // services: string;
 
   @IsDate()
-  date: string;
+  @Transform(({ value }) => new Date(value))
+  date: Date;
 
-  @IsString()
-  @Matches(TIEMPO, {
-    message: 'Debe ser un formato de tiempo válido, Ej: 08:00',
-  })
-  start_time: string;
+  // @IsString()
+  // @Matches(TIEMPO, {
+  //   message: 'Debe ser un formato de tiempo válido, Ej: 08:00',
+  // })
+  // start_time: string;
 
-  @IsString()
-  @MaxLength(200, { message: 'Máximo 200 caracteres' })
-  @IsOptional()
-  comments?: string;
+  // @IsString()
+  // @MaxLength(200, { message: 'Máximo 200 caracteres' })
+  // @IsOptional()
+  // comments?: string;
 }

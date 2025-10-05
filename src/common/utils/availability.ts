@@ -76,7 +76,7 @@ export function getRequiredSlotCount(duration: number): number {
  * de los que lo cumplen, quita la cantidad de slots requeridos para evitar
  * conflictos de sobreposición en otros horarios
  */
-function getFreeSlots(
+export function getFreeSlots(
   slots: { [key: string]: string | null },
   slotsRequired: number,
 ): string[] {
@@ -103,4 +103,14 @@ function getFreeSlots(
   }
 
   return freeSlots.flat();
+}
+
+/**
+ * getCurrentDay
+ * Devuelve el número de día de la semana en ese momento, lunes = 1, ..., domingo = 7
+ */
+export function getCurrentDay() {
+  const dia = new Date().getDay();
+  // Si es domingo (0), devuelve 7, de lo contrario, devuelve el día + 1
+  return dia === 0 ? 7 : dia;
 }

@@ -18,7 +18,7 @@ export class PrismaPublicServices implements PublicActions {
     return getBusinessDataUseCase(this.prisma, slug);
   }
 
-  async getAvailability(data: GetAvailabilityDto): Promise<string[]> {
+  async getAvailability(data: GetAvailabilityDto): Promise<any> {
     return getAvailabilityUseCase(this.prisma, data);
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { PublicActions } from './architecture/public.actions';
 import { GetAvailabilityDto } from './dto/get-availability.dto';
 
@@ -16,7 +16,7 @@ export class PublicController {
     return await this.actions.getBusinessData(slug);
   }
 
-  @Get('/availability')
+  @Post('/availability')
   async getAvailability(@Body() dto: GetAvailabilityDto) {
     return await this.actions.getAvailability(dto);
   }

@@ -58,12 +58,12 @@ model business {
   location_url  String?
   status        ACTIVE_STATUS @default(ACTIVE)
 
-  open_time_weekday  String
-  close_time_weekday String
-  open_on_saturday   Boolean @default(false)
-  open_on_sunday     Boolean @default(false)
-  open_time_weekend  String?
-  close_time_weekend String?
+  open_time_weekday  DateTime
+  close_time_weekday DateTime
+  open_on_saturday   Boolean   @default(false)
+  open_on_sunday     Boolean   @default(false)
+  open_time_weekend  DateTime?
+  close_time_weekend DateTime?
 
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
@@ -146,10 +146,10 @@ model schedule {
   id               String        @id @default(cuid())
   status           ACTIVE_STATUS @default(ACTIVE)
   day              Int // 1 = Lunes, 2 = Marter, ..., 7 = Domingo
-  start_time       String
-  break_start_time String
-  break_end_time   String
-  end_time         String
+  start_time       DateTime
+  end_time         DateTime
+  break_start_time DateTime?
+  break_end_time   DateTime?
   created_at       DateTime      @default(now())
   updated_at       DateTime      @updatedAt
 
@@ -165,9 +165,9 @@ model appointment {
   date        DateTime
   start_time  DateTime
   end_time    DateTime
-  comments    String
+  comments    String?
   client_name String
-  worker_name String
+  worker_name String?
   created_at  DateTime           @default(now())
   updated_at  DateTime           @updatedAt
   expires_at  DateTime?

@@ -8,13 +8,17 @@ import {
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import parseStringToDateTime from 'src/common/lib/parse-string-to-datetime';
+import { validateWorkerSchedules } from 'src/common/utils/validate-schedules';
 
 export async function createWorkerUseCase(
   prisma: PrismaService,
   data: CreateWorkerDto,
   user: User,
 ) {
-  const { email, cellphone } = data;
+  const { email, cellphone, schedules } = data;
+
+  validateWorkerSchedules(schedules);
 
   let clerkUser: User | undefined;
 
@@ -77,11 +81,23 @@ export async function createWorkerUseCase(
           },
         },
         schedules: {
-          create: data.schedules,
+          create: data.schedules.map((s) => ({
+            ...s,
+            start_time: parseStringToDateTime(s.start_time),
+            end_time: parseStringToDateTime(s.end_time),
+            break_start_time: s.break_start_time
+              ? parseStringToDateTime(s.break_start_time)
+              : null,
+            break_end_time: s.break_end_time
+              ? parseStringToDateTime(s.break_end_time)
+              : null,
+          })),
         },
         worker_service: {
           create: data.services.map((service_id) => ({
-            service: { connect: { id: service_id } },
+            service: {
+              connect: { id: service_id },
+            },
           })),
         },
       },

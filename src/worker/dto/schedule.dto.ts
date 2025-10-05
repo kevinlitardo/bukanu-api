@@ -4,6 +4,7 @@ import {
   IsIn,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
 } from 'class-validator';
@@ -30,17 +31,19 @@ export class ScheduleDto {
   @Matches(TIEMPO, {
     message: 'La hora de fin debe estar en formato HH:mm',
   })
-  break_start_time: string;
-
-  @IsString()
-  @Matches(TIEMPO, {
-    message: 'La hora de fin debe estar en formato HH:mm',
-  })
-  break_end_time: string;
-
-  @IsString()
-  @Matches(TIEMPO, {
-    message: 'La hora de fin debe estar en formato HH:mm',
-  })
   end_time: string;
+
+  @IsString()
+  @Matches(TIEMPO, {
+    message: 'La hora de fin debe estar en formato HH:mm',
+  })
+  @IsOptional()
+  break_start_time?: string;
+
+  @IsString()
+  @Matches(TIEMPO, {
+    message: 'La hora de fin debe estar en formato HH:mm',
+  })
+  @IsOptional()
+  break_end_time?: string;
 }
