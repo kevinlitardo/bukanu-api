@@ -1,18 +1,19 @@
-import { Controller, UseGuards, Req, Get } from '@nestjs/common';
+import { Controller, UseGuards, Req, Post, Body } from '@nestjs/common';
 import { UserActions } from './architecture/user.actions';
 import { SuccessMessage } from 'src/common/decorators/success-message.decorator';
 import { ClerkAuthGuard } from 'src/common/guards/clerk-auth.guard';
 import { User } from '@clerk/express';
+import { SyncUserDto } from './dto/sync-user.dto';
 
 @Controller('users')
 @UseGuards(ClerkAuthGuard)
 export class UserController {
   constructor(private readonly userActions: UserActions) {}
 
-  @Get('/sync')
+  @Post('/sync')
   @SuccessMessage('Usuario sincronizado')
-  async sync(@Req() req) {
+  async sync(@Body() data: SyncUserDto, @Req() req) {
     const user: User = req.user;
-    await this.userActions.sync(user);
+    await this.userActions.sync(data, user);
   }
 }

@@ -1,5 +1,11 @@
 import { Transform } from 'class-transformer';
-import { IsDate, IsOptional, IsString } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsDate,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class GetAvailabilityDto {
   @IsString()
@@ -9,10 +15,10 @@ export class GetAvailabilityDto {
   @IsOptional()
   worker_id?: string;
 
-  // @IsArray()
-  // @IsString({ each: true })
-  // @ArrayMinSize(1, { message: 'Debes seleccionar al menos un servicio' })
-  // services: string;
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMinSize(1, { message: 'Debes seleccionar al menos un servicio' })
+  services: string;
 
   @IsDate()
   @Transform(({ value }) => new Date(value))

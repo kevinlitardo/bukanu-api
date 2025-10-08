@@ -33,6 +33,7 @@ model user {
   name       String
   last_name  String
   cellphone  String?  @unique
+  timezone   String   @default("UTC")
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 

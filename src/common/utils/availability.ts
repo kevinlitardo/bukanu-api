@@ -1,80 +1,115 @@
+// availability.ts
+import {
+  parse,
+  addMinutes,
+  differenceInMinutes,
+  format,
+  isBefore,
+} from 'date-fns';
+
+/**
+ * parseTimeToDate
+ * Convierte "HH:mm" a Date usando la fecha base (por defecto today).
+ * NOTA: normalizamos a la fecha que pases (por defecto hoy). Importante
+ * para evitar problemas de zona horaria puedes pasar una fecha base controlada.
+ */
+export function parseTimeToDate(
+  time: string,
+  baseDate: Date = new Date(),
+): Date {
+  const parsed = parse(time, 'HH:mm', baseDate);
+  return parsed;
+}
+
+/**
+ * formatTime
+ * Formatea un Date a "HH:mm"
+ */
+export function formatTime(date: Date): string {
+  return format(date, 'HH:mm');
+}
+
 /**
  * generateTimeSlots
- * Genera un objeto donde las keys son las horas, en intervalos de 10 minutos
- * entre los parámetros ingresados de inicio y fin.
- * Elimina la última hora por defecto
+ * Genera un objeto donde las keys son las horas (HH:mm) en intervalos (por defecto 10 min)
+ * entre start (inclusive) y end (exclusive).
+ *
+ * Ejemplo:
+ * generateTimeSlots("08:00", "09:00") =>
+ * { "08:00": null, "08:10": null, "08:20": null, "08:30": null, "08:40": null, "08:50": null }
+ *
+ * Nota: elimina la "última hora por defecto" en el sentido que el slot que inicia exactamente en end NO se crea.
  */
 export function generateTimeSlots(
   start: string,
   end: string,
-): { [key: string]: any } {
-  const startTime = start.split(':').map(Number);
-  const endTime = end.split(':').map(Number);
+  intervalMinutes = 10,
+  baseDate: Date = new Date(),
+): { [key: string]: string | null } {
+  const startDate = parseTimeToDate(start, baseDate);
+  const endDate = parseTimeToDate(end, baseDate);
 
-  const startMinutes = startTime[0] * 60 + startTime[1];
-  const endMinutes = endTime[0] * 60 + endTime[1];
+  // seguridad: si start >= end devolvemos objeto vacío
+  if (!isBefore(startDate, endDate)) return {};
 
-  const timeSlots: { [key: string]: any } = {};
+  const result: { [key: string]: string | null } = {};
+  let cursor = startDate;
 
-  for (let minutes = startMinutes; minutes < endMinutes; minutes += 10) {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    const timeString = `${String(hours).padStart(2, '0')}:${String(
-      mins,
-    ).padStart(2, '0')}`;
-    timeSlots[timeString] = null; // Puedes reemplazar null con cualquier valor que desees
+  while (isBefore(cursor, endDate)) {
+    const key = formatTime(cursor);
+    result[key] = null;
+    cursor = addMinutes(cursor, intervalMinutes);
   }
 
-  return timeSlots;
-}
-
-/**
- * generateTimeRange
- * Genera una lista de string tipo tiempo (HH:mm) para poder reemplazar esas keys
- * con los valores de lo que sea que ocupe ese rango de tiempo en el horario general
- */
-export function generateTimeRange(start: string, end: string) {
-  const startTime = start.split(':').map(Number);
-  const endTime = end.split(':').map(Number);
-
-  const startMinutes = startTime[0] * 60 + startTime[1];
-  const endMinutes = endTime[0] * 60 + endTime[1];
-
-  let range: string[] = [];
-
-  for (let minutes = startMinutes; minutes <= endMinutes; minutes += 10) {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    const timeString = `${String(hours).padStart(2, '0')}:${String(
-      mins,
-    ).padStart(2, '0')}`;
-    range.push(timeString);
-  }
-
-  return range;
+  return result;
 }
 
 /**
  * getRequiredSlotCount
- * Devuelve el total de slots necesarios para el horario como entero múltiplo de 10
- * aproximado al inmediato superior, ej: 15 -> 20
+ * Dado un duration en minutos, devuelve la cantidad de slots requeridos según intervalMinutes.
+ * Ej: duration = 25, interval=10 => 3 slots (10,10,5 => ceil => 3)
  */
-export function getRequiredSlotCount(duration: number): number {
-  // Redondear al múltiplo de 10 más cercano (hacia arriba si es necesario)
-  const roundedNumber = Math.ceil(duration / 10) * 10;
+export function getRequiredSlotCount(
+  durationInMinutes: number,
+  intervalMinutes = 10,
+): number {
+  if (durationInMinutes <= 0) return 0;
+  return Math.ceil(durationInMinutes / intervalMinutes);
+}
 
-  // Calcular el número de grupos de 10 unidades
-  const groups = roundedNumber / 10;
-
-  return groups;
+/**
+ * generateTimeRange
+ * Genera un array de strings "HH:mm" comenzando en startSlot y con count slots consecutivos
+ * cada intervalMinutes minutos.
+ *
+ * startSlot debe existir en la malla de tiempo (o ser un HH:mm válido).
+ */
+export function generateTimeRange(
+  startSlot: string,
+  count: number,
+  intervalMinutes = 10,
+  baseDate: Date = new Date(),
+): string[] {
+  if (count <= 0) return [];
+  const start = parseTimeToDate(startSlot, baseDate);
+  const slots: string[] = [];
+  let cursor = start;
+  for (let i = 0; i <= count; i++) {
+    slots.push(formatTime(cursor));
+    cursor = addMinutes(cursor, intervalMinutes);
+  }
+  return slots;
 }
 
 /**
  * getFreeSlots
- * Del objeto "horario", separa en grupos los slots disponibles y verifica que
- * como mínimo cada grupo tenga los slots requeridos enviados como param,
- * de los que lo cumplen, quita la cantidad de slots requeridos para evitar
- * conflictos de sobreposición en otros horarios
+ * daySlots: objeto generado por generateTimeSlots o con el mismo shape { "HH:mm": null | "ocupado" }
+ * slotsRequired: cantidad de slots consecutivos que necesita el servicio
+ *
+ * Retorna: lista de strings ["08:00", "08:10", ...] que representan los posibles horarios
+ * de inicio donde hay consecutivamente `slotsRequired` slots libres (null).
+ *
+ * NOTA: devuelve el start de cada posible ventana. No devuelve la ventana completa.
  */
 export function getFreeSlots(
   slots: { [key: string]: string | null },
@@ -109,8 +144,8 @@ export function getFreeSlots(
  * getCurrentDay
  * Devuelve el número de día de la semana en ese momento, lunes = 1, ..., domingo = 7
  */
-export function getCurrentDay() {
-  const dia = new Date().getDay();
+export function getCurrentDay(date?: Date) {
+  const dia = date ? date.getDay() : new Date().getDay();
   // Si es domingo (0), devuelve 7, de lo contrario, devuelve el día + 1
   return dia === 0 ? 7 : dia;
 }
