@@ -18,11 +18,27 @@ export async function createWorkerUseCase(
 ) {
   const { email, cellphone, schedules } = data;
 
-  validateWorkerSchedules(schedules);
-
   let clerkUser: User | undefined;
 
   try {
+    const business = await prisma.business.findFirst({
+      where: {
+        slug: data.slug,
+        owner: { auth_id: user.id },
+      },
+    });
+
+    if (!business) throw new NotFoundException('El negocio no existe');
+
+    validateWorkerSchedules(schedules, {
+      open_time_weekday: business.open_time_weekday,
+      close_time_weekday: business.close_time_weekday,
+      open_on_saturday: business.open_on_saturday,
+      open_on_sunday: business.open_on_sunday,
+      open_time_weekend: business.open_time_weekend,
+      close_time_weekend: business.close_time_weekend,
+    });
+
     const exists = await prisma.user.findFirst({
       where: {
         OR: [{ email }, { cellphone }],
@@ -56,15 +72,6 @@ export async function createWorkerUseCase(
         'No se pudo crear el usuario en Clerk',
       );
     }
-
-    const business = await prisma.business.findFirst({
-      where: {
-        slug: data.slug,
-        owner: { auth_id: user.id },
-      },
-    });
-
-    if (!business) throw new NotFoundException('El negocio no existe');
 
     await prisma.worker.create({
       data: {

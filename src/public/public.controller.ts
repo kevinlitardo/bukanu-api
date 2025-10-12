@@ -20,9 +20,4 @@ export class PublicController {
   async getAvailability(@Body() dto: GetAvailabilityDto) {
     return await this.actions.getAvailability(dto);
   }
-
-  // @Get('/create-appointments')
-  // async createAppointments() {
-  //   return await this.actions.createAppointments();
-  // }
 }

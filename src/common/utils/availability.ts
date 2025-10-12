@@ -1,11 +1,6 @@
 // availability.ts
-import {
-  parse,
-  addMinutes,
-  differenceInMinutes,
-  format,
-  isBefore,
-} from 'date-fns';
+import { parse, addMinutes, isBefore } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 
 /**
  * parseTimeToDate
@@ -26,7 +21,7 @@ export function parseTimeToDate(
  * Formatea un Date a "HH:mm"
  */
 export function formatTime(date: Date): string {
-  return format(date, 'HH:mm');
+  return formatInTimeZone(date, 'UTC', 'HH:mm');
 }
 
 /**

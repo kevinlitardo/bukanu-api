@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
-import { isBefore, isEqual, parse } from 'date-fns';
+import { isAfter, isBefore, isEqual, parse } from 'date-fns';
 import { ScheduleDto } from 'src/worker/dto/schedule.dto';
+import parseStringToDateTime from '../lib/parse-string-to-datetime';
 
 interface BusinessSchedules {
   open_time_weekday: string;
@@ -19,15 +20,15 @@ export function validateBusinessSchedules({
   open_time_weekend,
   close_time_weekend,
 }: BusinessSchedules) {
-  const openAtWeekday = parse(open_time_weekday, 'HH:mm', new Date());
-  const closeAtWeekday = parse(close_time_weekday, 'HH:mm', new Date());
+  const openAtWeekday = parseStringToDateTime(open_time_weekday);
+  const closeAtWeekday = parseStringToDateTime(close_time_weekday);
   const openSaturday = open_on_saturday;
   const openSunday = open_on_sunday;
   const openAtWeekend = open_time_weekend
-    ? parse(open_time_weekend, 'HH:mm', new Date())
+    ? parseStringToDateTime(open_time_weekend)
     : undefined;
   const closeAtWeekend = close_time_weekend
-    ? parse(close_time_weekend, 'HH:mm', new Date())
+    ? parseStringToDateTime(close_time_weekend)
     : undefined;
 
   if (isEqual(openAtWeekday, closeAtWeekday)) {
@@ -91,75 +92,140 @@ export function validateBusinessSchedules({
   }
 }
 
-export function validateWorkerSchedules(schedules: ScheduleDto[]) {
-  const errors: any = {};
+interface BusinessRawSchedules {
+  open_time_weekday: Date; // 1970-01-01Txx:xxZ
+  close_time_weekday: Date; // 1970-01-01Txx:xxZ
+  open_on_saturday: boolean;
+  open_on_sunday: boolean;
+  open_time_weekend: Date | null;
+  close_time_weekend: Date | null;
+}
 
-  schedules.forEach(
-    ({ start_time, end_time, break_start_time, break_end_time }, index) => {
-      const startAt = parse(start_time, 'HH:mm', new Date());
-      const endAt = parse(end_time, 'HH:mm', new Date());
+/**
+ * Valida horarios de un worker contra las horas del negocio y que cada horario tenga sentido en su programación
+ */
+export function validateWorkerSchedules(
+  schedules: {
+    day: number; // 1 = lunes ... 7 = domingo
+    start_time: string; // HH:mm
+    end_time: string; // HH:mm
+    break_start_time?: string | null;
+    break_end_time?: string | null;
+    status: 'ACTIVE' | 'UNACTIVE';
+  }[],
+  {
+    open_time_weekday,
+    close_time_weekday,
+    open_on_saturday,
+    open_on_sunday,
+    open_time_weekend,
+    close_time_weekend,
+  }: BusinessRawSchedules,
+) {
+  const errors: Record<string, string> = {};
 
-      // Verifica que startAt sea menor que endAt
-      if (startAt.getTime() >= endAt.getTime()) {
+  schedules.forEach((schedule, index) => {
+    const {
+      day,
+      start_time,
+      end_time,
+      break_start_time,
+      break_end_time,
+      status,
+    } = schedule;
+
+    if (status === 'UNACTIVE') return; // Ignorar horarios inactivos
+
+    // Convertir HH:mm -> Date (normalizado al 1970-01-01 UTC)
+    const startAt = parseStringToDateTime(start_time);
+    const endAt = parseStringToDateTime(end_time);
+    const breakStartAt = break_start_time
+      ? parseStringToDateTime(break_start_time)
+      : null;
+    const breakEndAt = break_end_time
+      ? parseStringToDateTime(break_end_time)
+      : null;
+
+    // Determinar el horario del negocio según el día
+    let openTime = open_time_weekday;
+    let closeTime = close_time_weekday;
+
+    if (day === 6) {
+      if (!open_on_saturday) {
+        errors[`schedules.${index}.status`] = 'El negocio no abre los sábados.';
+        return;
+      }
+      openTime = open_time_weekend!;
+      closeTime = close_time_weekend!;
+    }
+
+    if (day === 7) {
+      if (!open_on_sunday) {
+        errors[`schedules.${index}.status`] =
+          'El negocio no abre los domingos.';
+        return;
+      }
+      openTime = open_time_weekend!;
+      closeTime = close_time_weekend!;
+    }
+
+    // === VALIDACIONES LÓGICAS ===
+
+    // 1. Inicio antes que fin
+    if (isAfter(startAt, endAt) || isEqual(startAt, endAt)) {
+      errors[`schedules.${index}.start_time`] =
+        'La hora de entrada debe ser menor que la hora de salida.';
+      errors[`schedules.${index}.end_time`] =
+        'La hora de salida debe ser mayor que la hora de entrada.';
+    }
+
+    // 2. Inicio dentro del horario del negocio
+    if (isBefore(startAt, openTime)) {
+      errors[`schedules.${index}.start_time`] =
+        'La hora de entrada no puede ser antes de la apertura del negocio.';
+    }
+
+    // 3. Fin dentro del horario del negocio
+    if (isAfter(endAt, closeTime)) {
+      errors[`schedules.${index}.end_time`] =
+        'La hora de salida no puede ser después del cierre del negocio.';
+    }
+
+    // 4. Descansos (si existen)
+    if (breakStartAt && breakEndAt) {
+      // Inicio de descanso < fin de descanso
+      if (
+        isAfter(breakStartAt, breakEndAt) ||
+        isEqual(breakStartAt, breakEndAt)
+      ) {
+        errors[`schedules.${index}.break_start_time`] =
+          'La hora de inicio del descanso debe ser menor que la de fin.';
+        errors[`schedules.${index}.break_end_time`] =
+          'La hora de fin del descanso debe ser mayor que la de inicio.';
+      }
+
+      // Descanso dentro del turno laboral
+      if (isBefore(breakStartAt, startAt) || isAfter(breakEndAt, endAt)) {
+        errors[`schedules.${index}.break_start_time`] =
+          'El descanso debe estar dentro del horario laboral.';
+        errors[`schedules.${index}.break_end_time`] =
+          'El descanso debe estar dentro del horario laboral.';
+      }
+
+      // 5. Evitar horas idénticas
+      const times = [startAt, endAt, breakStartAt, breakEndAt];
+      const unique = new Set(times.map((t) => t.getTime()));
+      if (unique.size !== times.length) {
         errors[`schedules.${index}.start_time`] =
-          'La hora de entrada debe ser menor que la de salida';
-        errors[`schedules.${index}.end_time`] =
-          'La hora de salida debe ser mayor que la de entrada';
+          'No se permiten horas iguales en el mismo día.';
       }
-
-      // Verifica que breakStartAt y breakEndAt sean válidos si están presentes
-      if (break_start_time && break_end_time) {
-        const breakStartAt = parse(break_start_time, 'HH:mm', new Date());
-        const breakEndAt = parse(break_end_time, 'HH:mm', new Date());
-
-        // Verifica que breakStartAt sea menor que breakEndAt
-        if (breakStartAt.getTime() >= breakEndAt.getTime()) {
-          errors[`schedules.${index}.break_start_time`] =
-            'La hora de inicio de descanso debe ser menor que la hora de fin de descanso';
-          errors[`schedules.${index}.break_end_time`] =
-            'La hora de fin de descanso debe ser mayor que la hora de inicio de descanso';
-        }
-
-        // Verifica que breakEndAt sea menor que endAt
-        if (breakEndAt.getTime() >= endAt.getTime()) {
-          errors[`schedules.${index}.break_end_time`] =
-            'La hora de fin de descanso debe ser menor que la hora de salida';
-        }
-
-        // Verifica que breakStartAt esté dentro del horario laboral
-        if (
-          breakStartAt.getTime() < startAt.getTime() ||
-          breakStartAt.getTime() >= endAt.getTime()
-        ) {
-          errors[`schedules.${index}.break_start_time`] =
-            'La hora de inicio de descanso debe estar dentro del horario laboral';
-        }
-
-        // Verifica que breakEndAt esté dentro del horario laboral
-        if (
-          breakEndAt.getTime() <= startAt.getTime() ||
-          breakEndAt.getTime() > endAt.getTime()
-        ) {
-          errors[`schedules.${index}.break_end_time`] =
-            'La hora de fin de descanso debe estar dentro del horario laboral';
-        }
-
-        // Verifica que no haya horas iguales
-        const horas = [startAt, endAt];
-        if (break_start_time)
-          horas.push(parse(break_start_time, 'HH:mm', new Date()));
-        if (break_end_time)
-          horas.push(parse(break_end_time, 'HH:mm', new Date()));
-        const horasUnicas = new Set(horas.map((hora) => hora.getTime()));
-        if (horasUnicas.size !== horas.length) {
-          errors[`schedules.${index}.start_time`] =
-            'No se permiten horas iguales';
-        }
-      }
-    },
-  );
+    }
+  });
 
   if (Object.keys(errors).length > 0) {
-    throw new BadRequestException({ errors });
+    throw new BadRequestException({
+      message: 'Error de validación en los horarios',
+      errors,
+    });
   }
 }

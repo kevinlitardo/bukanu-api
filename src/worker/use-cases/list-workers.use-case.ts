@@ -1,6 +1,6 @@
 import { User } from '@clerk/express';
-import { format } from 'date-fns';
 import { PrismaService } from 'prisma/prisma.service';
+import { formatTime } from 'src/common/utils/availability';
 
 export async function listWorkersUseCase(
   prisma: PrismaService,
@@ -56,13 +56,13 @@ export async function listWorkersUseCase(
         ...rest,
         schedules: schedules.map((s) => ({
           ...s,
-          start_time: format(s.start_time, 'HH:mm'),
-          end_time: format(s.end_time, 'HH:mm'),
+          start_time: formatTime(s.start_time),
+          end_time: formatTime(s.end_time),
           break_start_time: s.break_start_time
-            ? format(s.break_start_time, 'HH:mm')
+            ? formatTime(s.break_start_time)
             : null,
           break_end_time: s.break_end_time
-            ? format(s.break_end_time, 'HH:mm')
+            ? formatTime(s.break_end_time)
             : null,
         })),
         services: worker_service.map((service) => service.service_id),

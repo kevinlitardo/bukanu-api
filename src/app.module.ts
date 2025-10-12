@@ -7,6 +7,7 @@ import { ConfigModule } from '@nestjs/config';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { ServiceModule } from './service/service.module';
 import { PublicModule } from './public/public.module';
+import { ReserveModule } from './reserve/reserve.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { PublicModule } from './public/public.module';
     WorkerModule,
     ServiceModule,
     PublicModule,
+    ReserveModule,
   ],
   controllers: [],
   providers: [],

@@ -5,7 +5,6 @@ import { listBusinessesUseCase } from '../use-cases/list-businesses.use-case';
 import { getBusinessDataUseCase } from '../use-cases/get-business-data.use-case';
 import { GetAvailabilityDto } from '../dto/get-availability.dto';
 import { getAvailabilityUseCase } from '../use-cases/get-availability.use-case';
-import { createAppointmentsUseCase } from '../use-cases/create-appointments.use-case';
 
 @Injectable()
 export class PrismaPublicServices implements PublicActions {
@@ -21,9 +20,5 @@ export class PrismaPublicServices implements PublicActions {
 
   async getAvailability(data: GetAvailabilityDto): Promise<any> {
     return getAvailabilityUseCase(this.prisma, data);
-  }
-
-  async createAppointments(): Promise<any> {
-    return createAppointmentsUseCase(this.prisma);
   }
 }

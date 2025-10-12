@@ -1,5 +1,5 @@
-import { format } from 'date-fns';
 import { PrismaService } from 'prisma/prisma.service';
+import { formatTime } from 'src/common/utils/availability';
 
 export async function listBusinessesUseCase(
   prisma: PrismaService,
@@ -40,13 +40,13 @@ export async function listBusinessesUseCase(
 
     const mapped = businesses.map((business) => ({
       ...business,
-      open_time_weekday: format(business.open_time_weekday, 'HH:mm'),
-      close_time_weekday: format(business.close_time_weekday, 'HH:mm'),
+      open_time_weekday: formatTime(business.open_time_weekday),
+      close_time_weekday: formatTime(business.close_time_weekday),
       open_time_weekend: business.open_time_weekend
-        ? format(business.open_time_weekend, 'HH:mm')
+        ? formatTime(business.open_time_weekend)
         : null,
       close_time_weekend: business.close_time_weekend
-        ? format(business.close_time_weekend, 'HH:mm')
+        ? formatTime(business.close_time_weekend)
         : null,
       services: business.services.map((service) => service.name),
     }));

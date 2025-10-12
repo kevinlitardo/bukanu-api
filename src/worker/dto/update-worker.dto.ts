@@ -4,11 +4,16 @@ import {
   ArrayMinSize,
   IsArray,
   IsString,
+  Length,
   ValidateNested,
 } from 'class-validator';
 import { ScheduleDto } from './schedule.dto';
 
 export class UpdateWorkerDto {
+  @IsString()
+  @Length(1, 60)
+  slug: string;
+
   @IsArray()
   @ArrayMinSize(7, { message: 'Debes enviar los 7 días de la semana' })
   @ArrayMaxSize(7, { message: 'Solo se permiten los 7 días de la semana' })

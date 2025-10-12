@@ -1,6 +1,7 @@
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -9,14 +10,17 @@ import {
 } from 'class-validator';
 
 export class UpdateConfigurationDto {
-  @Type(() => Number)
-  @Transform(({ value }) => (isNaN(+value) ? 30 : +value))
-  @IsNumber(
-    { maxDecimalPlaces: 0 },
-    { message: 'Solo puedes enviar números enteros' },
-  )
-  @IsPositive({ message: 'Debe ser un número mayor a 0' })
+  @IsInt()
+  @IsIn([10, 15, 30], {
+    message: 'Solo pueden ser 10, 15 o 30 días',
+  })
   booking_window_days: number;
+
+  @IsInt()
+  @IsIn([1, 2, 3], {
+    message: 'Solo pueden ser 1, 2 o 3 días',
+  })
+  appointment_services_limit: number;
 
   @IsBoolean()
   require_deposit: boolean;
@@ -29,9 +33,4 @@ export class UpdateConfigurationDto {
   @IsPositive({ message: 'El anticipo debe ser mayor que 0' })
   @IsOptional()
   deposit_required?: number;
-
-  @IsInt()
-  @Min(1, { message: 'No puede ser menor de uno' })
-  @IsPositive({ message: 'No puede ser cero' })
-  appointment_services_limit: number;
 }
