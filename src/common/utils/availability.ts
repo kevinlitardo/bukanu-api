@@ -1,20 +1,5 @@
-// availability.ts
-import { parse, addMinutes, isBefore } from 'date-fns';
+import { addMinutes, isBefore } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-
-/**
- * parseTimeToDate
- * Convierte "HH:mm" a Date usando la fecha base (por defecto today).
- * NOTA: normalizamos a la fecha que pases (por defecto hoy). Importante
- * para evitar problemas de zona horaria puedes pasar una fecha base controlada.
- */
-export function parseTimeToDate(
-  time: string,
-  baseDate: Date = new Date(),
-): Date {
-  const parsed = parse(time, 'HH:mm', baseDate);
-  return parsed;
-}
 
 /**
  * formatTime
@@ -36,13 +21,12 @@ export function formatTime(date: Date): string {
  * Nota: elimina la "última hora por defecto" en el sentido que el slot que inicia exactamente en end NO se crea.
  */
 export function generateTimeSlots(
-  start: string,
-  end: string,
+  start: Date,
+  end: Date,
   intervalMinutes = 10,
-  baseDate: Date = new Date(),
 ): { [key: string]: string | null } {
-  const startDate = parseTimeToDate(start, baseDate);
-  const endDate = parseTimeToDate(end, baseDate);
+  const startDate = start;
+  const endDate = end;
 
   // seguridad: si start >= end devolvemos objeto vacío
   if (!isBefore(startDate, endDate)) return {};
@@ -80,13 +64,12 @@ export function getRequiredSlotCount(
  * startSlot debe existir en la malla de tiempo (o ser un HH:mm válido).
  */
 export function generateTimeRange(
-  startSlot: string,
+  startSlot: Date,
   count: number,
   intervalMinutes = 10,
-  baseDate: Date = new Date(),
 ): string[] {
   if (count <= 0) return [];
-  const start = parseTimeToDate(startSlot, baseDate);
+  const start = startSlot;
   const slots: string[] = [];
   let cursor = start;
   for (let i = 0; i <= count; i++) {

@@ -1,7 +1,6 @@
 import { PrismaService } from 'prisma/prisma.service';
 import { GetAvailabilityDto } from '../dto/get-availability.dto';
 import {
-  formatTime,
   generateTimeRange,
   generateTimeSlots,
   getCurrentDay,
@@ -9,8 +8,16 @@ import {
   getRequiredSlotCount,
 } from 'src/common/utils/availability';
 import { BadRequestException } from '@nestjs/common';
-import { differenceInMinutes, endOfDay, startOfDay } from 'date-fns';
-import { schedule } from '@prisma/client';
+import {
+  differenceInMinutes,
+  endOfDay,
+  isAfter,
+  isSameDay,
+  startOfDay,
+} from 'date-fns';
+import { getCurrentTimeRounded } from 'src/common/utils/get-current-time-rounded';
+import parseStringToDateTime from 'src/common/lib/parse-string-to-datetime';
+import setExecutionTimeToDate from 'src/common/utils/set-execution-time-to-date';
 
 export async function getAvailabilityUseCase(
   prisma: PrismaService,
@@ -22,6 +29,7 @@ export async function getAvailabilityUseCase(
   const business = await prisma.business.findUnique({
     where: { id: business_id },
     select: {
+      status: true,
       open_time_weekday: true,
       close_time_weekday: true,
       open_on_saturday: true,
@@ -41,10 +49,36 @@ export async function getAvailabilityUseCase(
     throw new BadRequestException({ message: 'El negocio no existe' });
   }
 
-  // Para guardar los horarios del trabajador seleccionado si existe
-  let schedules: Partial<schedule>[] = [];
+  if (business.status === 'UNACTIVE') return [];
 
-  // Verificar que el trabajador exista y guardar sus horarios
+  // Fecha para la cita manipulada con la hora de ejecución
+  const appointmentDate = setExecutionTimeToDate(date);
+
+  // Obtener día de la fecha seleccionada para la consulta 1 = lunes, 7 = domingo
+  const appointmentDay = getCurrentDay(appointmentDate);
+
+  // Hora de inicio y fin del mapa de horarios disponibles
+  let start: Date = business.open_time_weekday;
+  let end: Date = business.close_time_weekday;
+
+  // Para guardar los horarios del trabajador seleccionado si existe
+  let breakSlots: string[] = [];
+
+  // Verifica si la fecha para el appointment es fin de semana y si el negocio abre
+  if (
+    appointmentDay >= 6 &&
+    (business.open_on_saturday || business.open_on_sunday)
+  ) {
+    start = business.open_time_weekend!;
+    end = business.close_time_weekend!;
+  } else {
+    return [];
+  }
+
+  debugger;
+
+  // Verificar que el trabajador exista y establece el horario según el día
+  // de la fecha para el appointment
   if (worker_id) {
     const worker = await prisma.worker.findUnique({
       where: { id: worker_id, business_id },
@@ -66,8 +100,39 @@ export async function getAvailabilityUseCase(
       throw new BadRequestException({ message: 'El trabajador no existe' });
     }
 
-    schedules = worker.schedules;
+    const schedule = worker.schedules.find((s) => s.day === appointmentDay)!;
+
+    if (schedule.status === 'UNACTIVE') return [];
+
+    if (schedule.break_start_time && schedule.break_end_time) {
+      const duration = differenceInMinutes(
+        schedule.break_start_time,
+        schedule.break_end_time,
+      );
+
+      breakSlots = generateTimeRange(schedule!.break_start_time!, duration);
+    }
+
+    start = schedule.start_time;
+    end = schedule.end_time;
   }
+
+  // Si la consulta es en el mismo día verifica si...
+  if (isSameDay(appointmentDate, new Date())) {
+    // La hora es después del cierre, no regresa horarios
+    if (isAfter(appointmentDate.getTime(), end.getTime())) return [];
+    // La hora es después de la apertura, regresa la hora próxima como múltiplo de 10
+    if (isAfter(appointmentDate.getTime(), start.getTime())) {
+      start = parseStringToDateTime(getCurrentTimeRounded());
+    }
+  }
+
+  // Mapa de horarios disponibles según horario
+  let dayTimeSlots = generateTimeSlots(start, end);
+
+  breakSlots.forEach((key) => {
+    dayTimeSlots[key] = 'break';
+  });
 
   // Obtener las citas del día, pendientes sin expirar o confirmadas y de el trabajador si existe
   const appointments = await prisma.appointment.findMany({
@@ -75,8 +140,8 @@ export async function getAvailabilityUseCase(
       business_id,
       worker_id: worker_id ?? undefined,
       date: {
-        gte: startOfDay(date),
-        lt: endOfDay(date),
+        gte: startOfDay(appointmentDate),
+        lte: endOfDay(appointmentDate),
       },
       OR: [
         { status: 'CONFIRMED' },
@@ -91,81 +156,10 @@ export async function getAvailabilityUseCase(
     },
   });
 
-  // Obtener día de la fecha seleccionada para la consulta 1 = lunes, 7 = domingo
-  const appointmentDay = getCurrentDay(date);
-
-  // Hora de inicio y fin del mapa de horarios disponibles
-  let start: string = formatTime(business.open_time_weekday);
-  let end: string = formatTime(business.close_time_weekday);
-
-  // Verifica si es fin de semana
-  if (appointmentDay >= 6) {
-    // Si la fecha de consulta es fin de semana, y el negocio no abre ese día, regresa 0 horarios
-    if (!business.open_on_saturday && !business.open_on_sunday) return [];
-
-    // Si es fin de semana según la fecha enviada, y el negocio abre, estable el horario de apertura y cierre con el horario
-    // de fin de semana
-    if (business.open_on_saturday || business.open_on_sunday) {
-      start = formatTime(business.open_time_weekend!);
-      end = formatTime(business.close_time_weekend!);
-    }
-  }
-
-  // Mapa de horarios disponibles según horario
-  let dayTimeSlots = generateTimeSlots(start, end);
-
-  if (worker_id) {
-    // Crear mapa de horarios de trabajador según el día de la fecha seleccionada para la consulta {1: {...}, 2: {...}}
-    const workerSchedulesMap: Record<
-      string,
-      Partial<schedule>
-    > = schedules.reduce(
-      (acc: Record<string, Partial<schedule>>, val: Partial<schedule>) => {
-        acc[val.day!] = val;
-        return acc;
-      },
-      {},
-    );
-
-    // Horario del día de la fecha seleccionada
-    const workerDaySchedule: Partial<schedule> =
-      workerSchedulesMap[appointmentDay];
-
-    // Si el horario del día no está activo, regresa 0 horarios disponibles
-    if (workerDaySchedule.status === 'UNACTIVE') return [];
-
-    // Si el día de la fecha, está activo para el trabajador, se genera el mapa de horarios según ese horario
-    dayTimeSlots = generateTimeSlots(
-      formatTime(workerDaySchedule.start_time!),
-      formatTime(workerDaySchedule.end_time!),
-    );
-
-    // Si el horario del trabajador de el día de la fecha enviada cuenta con breaks, se genera el rango de tiempo que lo usa
-    // y se reemplaza en el mapa de horarios para no habilitar esas horas
-    if (
-      workerDaySchedule.break_start_time &&
-      workerDaySchedule.break_end_time
-    ) {
-      const duration = differenceInMinutes(
-        workerDaySchedule.break_start_time,
-        workerDaySchedule.break_end_time,
-      );
-
-      const breakSlots = generateTimeRange(
-        (start = formatTime(workerDaySchedule.break_start_time!)),
-        duration,
-      );
-
-      breakSlots.forEach((key) => {
-        dayTimeSlots[key] = 'break';
-      });
-    }
-  }
-
   const appointmentsSlots = appointments.map((app) => {
     const duration = differenceInMinutes(app.end_time, app.start_time);
     const slotsRequired = getRequiredSlotCount(duration);
-    const slots = generateTimeRange(formatTime(app.start_time), slotsRequired);
+    const slots = generateTimeRange(app.start_time, slotsRequired);
 
     return {
       id: app.id,

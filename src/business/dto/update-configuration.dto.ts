@@ -6,7 +6,6 @@ import {
   IsNumber,
   IsOptional,
   IsPositive,
-  Min,
 } from 'class-validator';
 
 export class UpdateConfigurationDto {
@@ -18,7 +17,7 @@ export class UpdateConfigurationDto {
 
   @IsInt()
   @IsIn([1, 2, 3], {
-    message: 'Solo pueden ser 1, 2 o 3 días',
+    message: 'Solo pueden ser 1, 2 o 3 servicios',
   })
   appointment_services_limit: number;
 
