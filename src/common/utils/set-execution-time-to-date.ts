@@ -1,12 +1,8 @@
 export default function setExecutionTimeToDate(date: Date) {
-  const fechaActual = new Date();
-  const fechaConHoraEjecucion = new Date(date);
-  fechaConHoraEjecucion.setHours(
-    fechaActual.getHours(),
-    fechaActual.getMinutes(),
-    fechaActual.getSeconds(),
-    fechaActual.getMilliseconds(),
-  );
+  const exectutionTime = new Date();
+  const hours = exectutionTime.getHours();
+  const minutes = exectutionTime.getMinutes();
+  const datePlusCurrentTime = new Date(Date.UTC(1970, 0, 1, hours, minutes, 0));
 
-  return fechaConHoraEjecucion;
+  return datePlusCurrentTime;
 }

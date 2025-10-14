@@ -55,7 +55,7 @@ export async function getAvailabilityUseCase(
   const appointmentDate = setExecutionTimeToDate(date);
 
   // Obtener día de la fecha seleccionada para la consulta 1 = lunes, 7 = domingo
-  const appointmentDay = getCurrentDay(appointmentDate);
+  const appointmentDay = getCurrentDay(date);
 
   // Hora de inicio y fin del mapa de horarios disponibles
   let start: Date = business.open_time_weekday;
@@ -71,11 +71,7 @@ export async function getAvailabilityUseCase(
   ) {
     start = business.open_time_weekend!;
     end = business.close_time_weekend!;
-  } else {
-    return [];
   }
-
-  debugger;
 
   // Verificar que el trabajador exista y establece el horario según el día
   // de la fecha para el appointment
@@ -118,7 +114,7 @@ export async function getAvailabilityUseCase(
   }
 
   // Si la consulta es en el mismo día verifica si...
-  if (isSameDay(appointmentDate, new Date())) {
+  if (isSameDay(date, new Date())) {
     // La hora es después del cierre, no regresa horarios
     if (isAfter(appointmentDate.getTime(), end.getTime())) return [];
     // La hora es después de la apertura, regresa la hora próxima como múltiplo de 10
