@@ -1,3 +1,7 @@
+/**
+ * parseStringToDateTime
+ * Devuelve la hora normalizada a formato UTC como Date (solo para leer la hora)
+ */
 export default function parseStringToDateTime(time: string): Date {
   // Validar que tenga formato HH:mm
   if (!/^\d{2}:\d{2}$/.test(time)) {

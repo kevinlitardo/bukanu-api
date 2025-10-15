@@ -21,7 +21,7 @@ export class ReserveDto {
   @IsArray()
   @IsString({ each: true })
   @ArrayMinSize(1, { message: 'Debes seleccionar al menos un servicio' })
-  services: string;
+  services: string[];
 
   @IsDate()
   @Transform(({ value }) => new Date(value))

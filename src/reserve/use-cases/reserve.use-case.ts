@@ -1,56 +1,66 @@
 import { User } from '@clerk/express';
-import { PrismaClient, schedule } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { ReserveDto } from '../dto/reserve.dto';
+import verifyAvailableSlots from 'src/common/utils/verify-available-slots';
 import { BadRequestException } from '@nestjs/common';
-import { endOfDay, startOfDay } from 'date-fns';
-import { formatTime, getCurrentDay } from 'src/common/utils/availability';
+import getUserByClerkId from 'src/common/utils/get-user-by-clerkid';
+import parseStringToDateTime from 'src/common/lib/parse-string-to-datetime';
+import { addMinutes } from 'date-fns';
+import { formatTime } from 'src/common/utils/availability';
 
 export default async function reserveUseCase(
   prisma: PrismaClient,
   data: ReserveDto,
   user: User,
 ) {
+  const dbUser = await getUserByClerkId(prisma, user.id);
+
   const { business_id, worker_id, services, date, start_time, comments } = data;
 
-  const business = await prisma.business.findUnique({
-    where: { id: business_id },
+  const {
+    services: servicesList,
+    worker,
+    availableSlots,
+  } = await verifyAvailableSlots(prisma, {
+    business_id,
+    worker_id,
+    services,
+    date,
   });
 
-  const worker = await prisma.worker.findUnique({
-    where: { id: worker_id, business_id },
-  });
-
-  if (!business || !worker) {
+  if (!availableSlots.includes(start_time)) {
     throw new BadRequestException({
-      message: 'El negocio o trabajador no existe',
+      message: 'El horario seleccionado no está disponibles',
     });
   }
 
-  // Para guardar los horarios del trabajador seleccionado si existe
-  let schedules: Partial<schedule>[] = [];
+  const startTime = parseStringToDateTime(start_time);
+  const duration = servicesList.reduce((acc, val) => {
+    return acc + val.duration;
+  }, 0);
+  const startTimePlusDuration = addMinutes(startTime, duration);
+  const end_time = formatTime(startTimePlusDuration);
 
-  // Verificar que el trabajador exista y guardar sus horarios
-  if (worker_id) {
-    const worker = await prisma.worker.findUnique({
-      where: { id: worker_id, business_id },
-      select: {
-        schedules: {
-          select: {
-            status: true,
-            day: true,
-            start_time: true,
-            end_time: true,
-            break_start_time: true,
-            break_end_time: true,
-          },
-        },
+  await prisma.appointment.create({
+    data: {
+      status: 'CONFIRMED',
+      date,
+      start_time,
+      end_time,
+      comments,
+      client_name: `${user.firstName} ${user.lastName}`.trim(),
+      worker_name: worker
+        ? `${worker.name} ${worker?.last_name}`.trim()
+        : undefined,
+
+      business_id,
+      worker_id,
+      user_id: dbUser.id,
+      appointment_services: {
+        create: services.map((serviceId) => ({
+          service: { connect: { id: serviceId } },
+        })),
       },
-    });
-
-    if (!worker) {
-      throw new BadRequestException({ message: 'El trabajador no existe' });
-    }
-
-    schedules = worker.schedules;
-  }
+    },
+  });
 }

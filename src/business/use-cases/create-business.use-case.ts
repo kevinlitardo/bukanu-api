@@ -13,9 +13,9 @@ export async function createBusinessUseCase(
   logo: Express.Multer.File,
   user: User,
 ): Promise<void> {
-  const dbUser = await getUserByClerkId(prisma, user.id);
-
   try {
+    const dbUser = await getUserByClerkId(prisma, user.id);
+
     validateBusinessSchedules({
       open_time_weekday: data.open_time_weekday,
       close_time_weekday: data.close_time_weekday,

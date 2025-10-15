@@ -162,7 +162,6 @@ model appointment {
   id String @id @default(cuid())
 
   status      APPOINTMENT_STATUS @default(PENDING)
-  services    String[]
   date        DateTime
   start_time  DateTime
   end_time    DateTime
