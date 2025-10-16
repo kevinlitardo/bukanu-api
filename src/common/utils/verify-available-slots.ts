@@ -190,8 +190,8 @@ export default async function verifyAvailableSlots(
       business_id,
       worker_id: worker_id ?? undefined,
       date: {
-        gte: startOfDay(appointmentDate),
-        lte: endOfDay(appointmentDate),
+        gte: startOfDay(date),
+        lte: endOfDay(date),
       },
       OR: [
         { status: 'CONFIRMED' },

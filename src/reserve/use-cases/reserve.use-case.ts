@@ -15,6 +15,9 @@ export default async function reserveUseCase(
 ) {
   const dbUser = await getUserByClerkId(prisma, user.id);
 
+  // Validar que no tenga más citas agendadas con el mismo negocio
+  // Validar en caso que el negocio requiera anticipo y guardar como pending
+
   const { business_id, worker_id, services, date, start_time, comments } = data;
 
   const {
@@ -39,16 +42,16 @@ export default async function reserveUseCase(
     return acc + val.duration;
   }, 0);
   const startTimePlusDuration = addMinutes(startTime, duration);
-  const end_time = formatTime(startTimePlusDuration);
+  const end_time = parseStringToDateTime(formatTime(startTimePlusDuration));
 
   await prisma.appointment.create({
     data: {
       status: 'CONFIRMED',
       date,
-      start_time,
+      start_time: startTime,
       end_time,
       comments,
-      client_name: `${user.firstName} ${user.lastName}`.trim(),
+      client_name: `${user.firstName} ${user.lastName ?? ''}`.trim(),
       worker_name: worker
         ? `${worker.name} ${worker?.last_name}`.trim()
         : undefined,
