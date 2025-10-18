@@ -26,6 +26,12 @@ enum APPOINTMENT_STATUS {
   COMPLETED
 }
 
+enum SUBSCRIPTION_STATUS {
+  ACTIVE
+  CANCELED
+  EXPIRED
+}
+
 model user {
   id         String   @id @default(cuid())
   auth_id    String   @unique
@@ -38,11 +44,44 @@ model user {
   updated_at DateTime @updatedAt
 
   // Relaciones
-  businesses  business[]    @relation("user_businesses") // dueño de negocios
-  worker_at   worker[] // negocios donde es trabajador
-  appointment appointment[]
+  businesses    business[]     @relation("user_businesses") // dueño de negocios
+  subscriptions subscription[]
+  worker_at     worker[] // negocios donde es trabajador
+  appointment   appointment[]
 
   @@index([auth_id])
+}
+
+model subscriptionPlan {
+  id             String         @id @default(cuid())
+  name           String         @unique
+  description    String?
+  price_usd      Int
+  duration_days  Int // ej. 30 días
+  max_businesses Int
+  max_workers    Int
+  max_services   Int
+  created_at     DateTime       @default(now())
+  subscription   subscription[]
+}
+
+model subscription {
+  id                       String              @id @default(cuid())
+  status                   SUBSCRIPTION_STATUS @default(ACTIVE)
+  provider                 String? // "stripe", "kushki", "manual", etc.
+  provider_subscription_id String? // ID externo del proveedor
+  started_at               DateTime            @default(now())
+  current_period_end       DateTime
+  canceled_at              DateTime?
+  trial                    Boolean             @default(false)
+
+  user_id String
+  user    user             @relation(fields: [user_id], references: [id])
+  plan_id String
+  plan    subscriptionPlan @relation(fields: [plan_id], references: [id])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
 model business {
@@ -88,10 +127,9 @@ model business_config {
   business_id String   @unique
   business    business @relation(fields: [business_id], references: [id], onDelete: Cascade)
 
-  booking_window_days        Int     @default(30) // ej: 30
-  appointment_services_limit Int     @default(1)
-  require_deposit            Boolean @default(false)
-  deposit_required           Int?
+  booking_window_days Int     @default(30) // ej: 30
+  require_deposit     Boolean @default(false)
+  deposit_required    Int?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

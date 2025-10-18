@@ -1,7 +1,5 @@
 import { Transform } from 'class-transformer';
 import {
-  ArrayMinSize,
-  IsArray,
   IsDate,
   IsOptional,
   IsString,
@@ -18,10 +16,8 @@ export class ReserveDto {
   @IsOptional()
   worker_id?: string;
 
-  @IsArray()
-  @IsString({ each: true })
-  @ArrayMinSize(1, { message: 'Debes seleccionar al menos un servicio' })
-  services: string[];
+  @IsString()
+  service: string;
 
   @IsDate()
   @Transform(({ value }) => new Date(value))

@@ -18,7 +18,7 @@ export default async function reserveUseCase(
   // Validar que no tenga más citas agendadas con el mismo negocio
   // Validar en caso que el negocio requiera anticipo y guardar como pending
 
-  const { business_id, worker_id, services, date, start_time, comments } = data;
+  const { business_id, worker_id, service, date, start_time, comments } = data;
 
   const {
     services: servicesList,
@@ -27,7 +27,7 @@ export default async function reserveUseCase(
   } = await verifyAvailableSlots(prisma, {
     business_id,
     worker_id,
-    services,
+    service,
     date,
   });
 
@@ -60,9 +60,7 @@ export default async function reserveUseCase(
       worker_id,
       user_id: dbUser.id,
       appointment_services: {
-        create: services.map((serviceId) => ({
-          service: { connect: { id: serviceId } },
-        })),
+        create: { service_id: service },
       },
     },
   });

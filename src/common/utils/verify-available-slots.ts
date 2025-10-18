@@ -21,13 +21,13 @@ import { getCurrentTimeRounded } from './get-current-time-rounded';
 interface Props {
   business_id: string;
   worker_id?: string;
-  services: string[];
+  service: string;
   date: Date;
 }
 
 export default async function verifyAvailableSlots(
   prisma: PrismaClient,
-  { business_id, worker_id, services, date }: Props,
+  { business_id, worker_id, service, date }: Props,
 ): Promise<{
   services: { id: string; duration: number }[];
   worker: { name: string; last_name?: string } | null;
@@ -44,6 +44,18 @@ export default async function verifyAvailableSlots(
       open_on_sunday: true,
       open_time_weekend: true,
       close_time_weekend: true,
+      workers: {
+        where: {
+          status: 'ACTIVE',
+          worker_service: {
+            some: {
+              service_id: {
+                contains: service,
+              },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -62,7 +74,7 @@ export default async function verifyAvailableSlots(
   const servicesList = await prisma.service.findMany({
     where: {
       id: {
-        in: services,
+        contains: service,
       },
     },
     select: {
@@ -100,6 +112,9 @@ export default async function verifyAvailableSlots(
     start = business.open_time_weekend!;
     end = business.close_time_weekend!;
   }
+
+  // if (business.workers.length) {
+  // }
 
   // Verificar que el trabajador exista y establece el horario según el día
   // de la fecha para el appointment

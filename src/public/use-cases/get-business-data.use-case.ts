@@ -97,7 +97,6 @@ export async function getBusinessDataUseCase(
         business_config: {
           select: {
             booking_window_days: true,
-            appointment_services_limit: true,
             require_deposit: true,
             deposit_required: true,
           },
