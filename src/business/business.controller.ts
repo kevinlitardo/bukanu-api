@@ -20,9 +20,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { UpdateConfigurationDto } from './dto/update-configuration.dto';
+import { SubscriptionGuard } from 'src/common/guards/subscription.guard';
 
 @Controller('businesses')
-@UseGuards(ClerkAuthGuard)
+@UseGuards(ClerkAuthGuard, SubscriptionGuard)
 export class BusinessController {
   constructor(private readonly actions: BusinessActions) {}
 
@@ -30,6 +31,12 @@ export class BusinessController {
   async listUserBusinesses(@Req() req) {
     const user: User = req.user;
     return await this.actions.listUserBusinesses(user);
+  }
+
+  @Get('/:slug')
+  async getBusinessData(@Param('slug') slug: string, @Req() req) {
+    const user: User = req.user;
+    return await this.actions.getBusinessData(slug, user);
   }
 
   @Post()

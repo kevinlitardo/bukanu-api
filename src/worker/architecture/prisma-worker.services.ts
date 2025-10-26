@@ -10,6 +10,7 @@ import { UpdateStatusDto } from '../dto/update-status.dto';
 import { updateStatusUseCase } from '../use-cases/update-status.use-case';
 import { UpdateWorkerDto } from '../dto/update-worker.dto';
 import { updateWorkerUseCase } from '../use-cases/update-worker.use-case';
+import { getWorkerByIdUseCase } from '../use-cases/get-worker-by-id.use-case';
 
 @Injectable()
 export class PrismaWorkerServices implements WorkerActions {
@@ -17,6 +18,10 @@ export class PrismaWorkerServices implements WorkerActions {
 
   async list(slug: string, user: User): Promise<any> {
     return await listWorkersUseCase(this.prisma, slug, user);
+  }
+
+  async getById(slug: string, id: string, user: User): Promise<any> {
+    return await getWorkerByIdUseCase(this.prisma, slug, id, user);
   }
 
   async create(data: CreateWorkerDto, user: User): Promise<void> {

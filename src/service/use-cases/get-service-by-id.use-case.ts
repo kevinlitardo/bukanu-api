@@ -1,15 +1,18 @@
 import { PrismaService } from 'prisma/prisma.service';
 
 import { User } from '@clerk/express';
+import { BadRequestException } from '@nestjs/common';
 
-export default async function listServicesUseCase(
+export default async function getServiceByIdUseCase(
   prisma: PrismaService,
   slug: string,
+  id: string,
   user: User,
 ) {
   try {
-    const response = await prisma.service.findMany({
+    const service = await prisma.service.findFirst({
       where: {
+        id,
         business: {
           slug,
           owner: {
@@ -20,17 +23,23 @@ export default async function listServicesUseCase(
       select: {
         id: true,
         name: true,
-        // description: true,
+        description: true,
         price: true,
         duration: true,
         status: true,
       },
-      orderBy: {
-        name: 'asc',
-      },
     });
 
-    return response.map((item) => ({ ...item, price: item.price / 100 }));
+    if (!service) {
+      throw new BadRequestException({ message: 'El servicio no existe' });
+    }
+
+    const dataFixed = {
+      ...service,
+      price: service.price / 100,
+    };
+
+    return dataFixed;
   } catch (error) {
     throw error;
   }

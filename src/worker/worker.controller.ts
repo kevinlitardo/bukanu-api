@@ -28,6 +28,16 @@ export class WorkerController {
     return await this.actions.list(slug, user);
   }
 
+  @Get('/:slug/:id')
+  async getById(
+    @Param('slug') slug: string,
+    @Param('id') id: string,
+    @Req() req,
+  ) {
+    const user: User = req.user;
+    return await this.actions.getById(slug, id, user);
+  }
+
   @Post()
   @SuccessMessage('Trabajador creado')
   async create(@Body() dto: CreateWorkerDto, @Req() req) {

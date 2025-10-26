@@ -1,5 +1,11 @@
 import { clerkClient, verifyToken } from '@clerk/express';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 @Injectable()
 export class ClerkAuthGuard implements CanActivate {
@@ -8,7 +14,12 @@ export class ClerkAuthGuard implements CanActivate {
 
     const token = request.cookies.__session;
 
-    if (!token) return false;
+    if (!token) {
+      throw new UnauthorizedException({
+        message:
+          'No estás autorizado para acceder a este recurso. Por favor, verifica tus credenciales',
+      });
+    }
 
     try {
       const response = await verifyToken(token, {
@@ -19,7 +30,10 @@ export class ClerkAuthGuard implements CanActivate {
 
       return true;
     } catch (error) {
-      return false;
+      throw new UnauthorizedException({
+        message:
+          'No estás autorizado para acceder a este recurso. Por favor, verifica tus credenciales',
+      });
     }
   }
 }

@@ -8,6 +8,8 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 import { ServiceModule } from './service/service.module';
 import { PublicModule } from './public/public.module';
 import { ReserveModule } from './reserve/reserve.module';
+import { SubscriptionModule } from './subscription/subscription.module';
+import { PlanModule } from './plans/plan.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { ReserveModule } from './reserve/reserve.module';
     ServiceModule,
     PublicModule,
     ReserveModule,
+    SubscriptionModule,
+    PlanModule,
   ],
   controllers: [],
   providers: [],

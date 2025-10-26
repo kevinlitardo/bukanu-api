@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { PrismaClient, service, user } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import setExecutionTimeToDate from './set-execution-time-to-date';
 import {
   generateTimeRange,

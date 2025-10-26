@@ -5,6 +5,7 @@ import { UpdateWorkerDto } from '../dto/update-worker.dto';
 
 export abstract class WorkerActions {
   abstract list(slug: string, user: User): Promise<any>;
+  abstract getById(slug: string, id: string, user: User): Promise<any>;
   abstract create(data: CreateWorkerDto, user: User): Promise<void>;
   abstract updateStatus(
     id: string,

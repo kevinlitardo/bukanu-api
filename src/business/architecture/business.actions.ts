@@ -6,6 +6,7 @@ import { UpdateConfigurationDto } from '../dto/update-configuration.dto';
 
 export abstract class BusinessActions {
   abstract listUserBusinesses(user: User): Promise<any>;
+  abstract getBusinessData(slug: string, user: User): Promise<any>;
   abstract create(
     data: CreateBusinessDto,
     logo: Express.Multer.File,

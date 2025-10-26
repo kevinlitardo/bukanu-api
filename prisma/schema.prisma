@@ -52,17 +52,25 @@ model user {
   @@index([auth_id])
 }
 
-model subscriptionPlan {
-  id             String         @id @default(cuid())
-  name           String         @unique
-  description    String?
-  price_usd      Int
-  duration_days  Int // ej. 30 días
-  max_businesses Int
-  max_workers    Int
-  max_services   Int
-  created_at     DateTime       @default(now())
-  subscription   subscription[]
+model plan {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  description      String?
+  price_usd        Int
+  duration_days    Int // ej. 30 días
+  max_businesses   Int
+  max_workers      Int
+  max_services     Int
+  external_plan_id String?
+  provider         String? // 'stripe | 'paypal'
+  recommended      Boolean  @default(false)
+  order            Int      @default(0)
+  features         String[]
+
+  subscription subscription[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
 model subscription {
@@ -76,9 +84,9 @@ model subscription {
   trial                    Boolean             @default(false)
 
   user_id String
-  user    user             @relation(fields: [user_id], references: [id])
+  user    user   @relation(fields: [user_id], references: [id])
   plan_id String
-  plan    subscriptionPlan @relation(fields: [plan_id], references: [id])
+  plan    plan   @relation(fields: [plan_id], references: [id])
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

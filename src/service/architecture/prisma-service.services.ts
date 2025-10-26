@@ -10,6 +10,7 @@ import { PrismaService } from 'prisma/prisma.service';
 import { UpdateStatusDto } from '../dto/update-status.dto';
 import updateServiceStatusUseCase from '../use-cases/update-service-status.use-case';
 import { deleteServiceUseCase } from '../use-cases/delete-service.use-case';
+import getServiceByIdUseCase from '../use-cases/get-service-by-id.use-case';
 
 @Injectable()
 export class PrismaServiceServices implements ServiceActions {
@@ -17,6 +18,10 @@ export class PrismaServiceServices implements ServiceActions {
 
   async list(slug: string, user: User): Promise<any> {
     return await listServicesUseCase(this.prisma, slug, user);
+  }
+
+  async getById(slug: string, id: string, user: User): Promise<any> {
+    return await getServiceByIdUseCase(this.prisma, slug, id, user);
   }
 
   async create(data: CreateServiceDto, user: User): Promise<any> {

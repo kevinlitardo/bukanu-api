@@ -13,6 +13,7 @@ import deleteBusinessUseCase from '../use-cases/delete-business.use-case';
 import restoreBusinessUseCase from '../use-cases/restore-business.use-case';
 import { UpdateConfigurationDto } from '../dto/update-configuration.dto';
 import updateBusinessConfigurationUseCase from '../use-cases/update-business-configuration.use-case';
+import getBusinessDataUseCase from '../use-cases/get-business-data.use-case';
 
 @Injectable()
 export class PrismaBusinessServices implements BusinessActions {
@@ -20,6 +21,10 @@ export class PrismaBusinessServices implements BusinessActions {
 
   async listUserBusinesses(user: User): Promise<any> {
     return listUserBusinessesUseCase(this.prisma, user);
+  }
+
+  async getBusinessData(slug: string, user: User): Promise<any> {
+    return getBusinessDataUseCase(this.prisma, slug, user);
   }
 
   async create(

@@ -1,6 +1,5 @@
 import { User } from '@clerk/express';
 import { PrismaService } from 'prisma/prisma.service';
-import { formatTime } from 'src/common/utils/availability';
 
 export async function listUserBusinessesUseCase(
   prisma: PrismaService,
@@ -18,21 +17,6 @@ export async function listUserBusinessesUseCase(
       logo_url: true,
 
       name: true,
-      phone: true,
-      address: true,
-      description: true,
-
-      location_url: true,
-      facebook_url: true,
-      instagram_url: true,
-      tiktok_url: true,
-
-      open_time_weekday: true,
-      close_time_weekday: true,
-      open_on_saturday: true,
-      open_on_sunday: true,
-      open_time_weekend: true,
-      close_time_weekend: true,
 
       status: true,
 
@@ -45,14 +29,6 @@ export async function listUserBusinessesUseCase(
           appointments: true,
         },
       },
-
-      business_config: {
-        select: {
-          booking_window_days: true,
-          require_deposit: true,
-          deposit_required: true,
-        },
-      },
     },
     orderBy: {
       name: 'asc',
@@ -61,14 +37,6 @@ export async function listUserBusinessesUseCase(
 
   const mapped = list.map(({ _count, ...rest }) => ({
     ...rest,
-    open_time_weekday: formatTime(rest.open_time_weekday),
-    close_time_weekday: formatTime(rest.close_time_weekday),
-    open_time_weekend: rest.open_time_weekend
-      ? formatTime(rest.open_time_weekend)
-      : null,
-    close_time_weekend: rest.close_time_weekend
-      ? formatTime(rest.close_time_weekend)
-      : null,
     workers: _count.workers,
     services: _count.services,
     appointments: _count.appointments,
