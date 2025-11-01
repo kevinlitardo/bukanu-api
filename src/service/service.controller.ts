@@ -10,7 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ClerkAuthGuard } from 'src/common/guards/clerk-auth.guard';
+import { ClerkAuthGuard } from 'src/common/filters/guards/clerk-auth.guard';
 import { ServiceActions } from './architecture/service.actions';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { SuccessMessage } from 'src/common/decorators/success-message.decorator';

@@ -13,14 +13,14 @@ import {
 } from '@nestjs/common';
 import { BusinessActions } from './architecture/business.actions';
 import { CreateBusinessDto } from './dto/create-business.dto';
-import { ClerkAuthGuard } from 'src/common/guards/clerk-auth.guard';
+import { ClerkAuthGuard } from 'src/common/filters/guards/clerk-auth.guard';
 import { User } from '@clerk/express';
 import { SuccessMessage } from 'src/common/decorators/success-message.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { UpdateConfigurationDto } from './dto/update-configuration.dto';
-import { SubscriptionGuard } from 'src/common/guards/subscription.guard';
+import { SubscriptionGuard } from 'src/common/filters/guards/subscription.guard';
 
 @Controller('businesses')
 @UseGuards(ClerkAuthGuard, SubscriptionGuard)

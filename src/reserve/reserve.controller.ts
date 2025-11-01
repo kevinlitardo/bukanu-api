@@ -1,7 +1,7 @@
 import { User } from '@clerk/express';
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { SuccessMessage } from 'src/common/decorators/success-message.decorator';
-import { ClerkAuthGuard } from 'src/common/guards/clerk-auth.guard';
+import { ClerkAuthGuard } from 'src/common/filters/guards/clerk-auth.guard';
 import { ReserveActions } from './architecture/reserve.actions';
 import { ReserveDto } from './dto/reserve.dto';
 
