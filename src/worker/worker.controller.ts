@@ -23,9 +23,9 @@ export class WorkerController {
   constructor(private readonly actions: WorkerActions) {}
 
   @Get('/:slug')
-  async list(@Param('slug') slug: string, @Req() req) {
+  async listBusinessWorkers(@Param('slug') slug: string, @Req() req) {
     const user: User = req.user;
-    return await this.actions.list(slug, user);
+    return await this.actions.listBusinessWorkers(slug, user);
   }
 
   @Get('/:slug/:id')

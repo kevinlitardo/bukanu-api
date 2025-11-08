@@ -156,8 +156,8 @@ model service {
   business_id String
   business    business @relation(fields: [business_id], references: [id])
 
-  appointment_services appointment_service[]
-  worker_service       worker_service[]
+  worker_service worker_service[]
+  appointment    appointment[]
 
   @@unique([business_id, name])
 }
@@ -165,6 +165,7 @@ model service {
 model worker {
   id         String        @id @default(cuid())
   status     ACTIVE_STATUS @default(ACTIVE)
+  work_days  Int[] // 1,2... 1 lunes - 7 domingo
   created_at DateTime      @default(now())
   updated_at DateTime      @updatedAt
 
@@ -175,7 +176,6 @@ model worker {
   business    business @relation(fields: [business_id], references: [id])
 
   appointments   appointment[]
-  schedules      schedule[]
   worker_service worker_service[]
 }
 
@@ -189,21 +189,6 @@ model worker_service {
   @@id([worker_id, service_id])
 }
 
-model schedule {
-  id               String        @id @default(cuid())
-  status           ACTIVE_STATUS @default(ACTIVE)
-  day              Int // 1 = Lunes, 2 = Marter, ..., 7 = Domingo
-  start_time       DateTime
-  end_time         DateTime
-  break_start_time DateTime?
-  break_end_time   DateTime?
-  created_at       DateTime      @default(now())
-  updated_at       DateTime      @updatedAt
-
-  worker_id String
-  worker    worker @relation(fields: [worker_id], references: [id], onDelete: Cascade)
-}
-
 model appointment {
   id String @id @default(cuid())
 
@@ -211,7 +196,6 @@ model appointment {
   date        DateTime
   start_time  DateTime
   end_time    DateTime
-  comments    String?
   client_name String
   worker_name String?
   created_at  DateTime           @default(now())
@@ -227,20 +211,8 @@ model appointment {
   user_id String
   user    user   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  appointment_services appointment_service[]
+  service_id String
+  service    service @relation(fields: [service_id], references: [id])
 
   @@index([worker_id, start_time])
-}
-
-model appointment_service {
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  appointment_id String
-  appointment    appointment @relation(fields: [appointment_id], references: [id], onDelete: Cascade)
-
-  service_id String
-  service    service @relation(fields: [service_id], references: [id], onDelete: Cascade)
-
-  @@id([appointment_id, service_id])
 }

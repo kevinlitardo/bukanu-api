@@ -1,5 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import {
+  ACTIVE_STATUS,
+  PrismaClient,
+  service,
+  user,
+  worker,
+  worker_service,
+} from '@prisma/client';
 import setExecutionTimeToDate from './set-execution-time-to-date';
 import {
   generateTimeRange,
@@ -18,21 +25,55 @@ import {
 import parseStringToDateTime from '../lib/parse-string-to-datetime';
 import { getCurrentTimeRounded } from './get-current-time-rounded';
 
+/**
+ * Pasos para verificar un horario SI NO HAY TRABAJADORES
+ * 1. Armar horario del día seleccionado
+ * 2. Listar todas las citas para ese día
+ * 2. Completar horario según citas
+ * 3. Devolver horas libres si cumplen con los slots necesario según el servicio solicitado
+ */
+
+/**
+ * Pasos para verificar un horario SI HAY TRABAJADORES
+ * 1. Armar horario del día seleccionado
+ * 2. Listar todas las citas para ese día con ese servicio
+ * 2. Completar horas con citas según uso
+ * 3. Buscar trabajadores que den el servicio solicitado y atiendan ese día
+ * 3. Devolver horas libres si cumplen con los slots necesario según el servicio solicitado
+ */
+
 interface Props {
   business_id: string;
   worker_id?: string;
-  service: string;
+  service_id: string;
   date: Date;
 }
 
+type WorkerConUsuario = {
+  id: string;
+  status: ACTIVE_STATUS;
+  work_days: number[];
+  user: {
+    name: string;
+    last_name: string;
+  };
+  worker_service: { service_id: string }[];
+};
+
 export default async function verifyAvailableSlots(
   prisma: PrismaClient,
-  { business_id, worker_id, service, date }: Props,
+  { business_id, worker_id, service_id, date }: Props,
 ): Promise<{
-  services: { id: string; duration: number }[];
-  worker: { name: string; last_name?: string } | null;
+  service: Partial<service>;
+  worker: WorkerConUsuario | null;
   availableSlots: string[];
 }> {
+  // Fecha para la cita manipulada con la hora de ejecución
+  const appointmentDate = setExecutionTimeToDate(date);
+
+  // Obtener día de la fecha seleccionada para la consulta 1 = lunes, 7 = domingo
+  const appointmentDay = getCurrentDay(date);
+
   // Verificar que el negocio exista
   const business = await prisma.business.findUnique({
     where: { id: business_id },
@@ -46,14 +87,32 @@ export default async function verifyAvailableSlots(
       close_time_weekend: true,
       workers: {
         where: {
-          status: 'ACTIVE',
-          worker_service: {
-            some: {
-              service_id: {
-                contains: service,
-              },
+          id: worker_id,
+        },
+        select: {
+          id: true,
+          status: true,
+          work_days: true,
+          user: {
+            select: {
+              name: true,
+              last_name: true,
             },
           },
+          worker_service: {
+            select: {
+              service_id: true,
+            },
+          },
+        },
+      },
+      services: {
+        where: {
+          id: service_id,
+        },
+        select: {
+          id: true,
+          duration: true,
         },
       },
     },
@@ -63,46 +122,58 @@ export default async function verifyAvailableSlots(
     throw new BadRequestException({ message: 'El negocio no existe' });
   }
 
+  const worker = business.workers.find((w) => w.id === worker_id) ?? null;
+  const service = business.services[0];
+
   if (business.status === 'UNACTIVE') {
     return {
-      services: [],
+      service,
       worker: null,
       availableSlots: [],
     };
   }
 
-  const servicesList = await prisma.service.findMany({
-    where: {
-      id: {
-        contains: service,
-      },
-    },
-    select: {
-      id: true,
-      duration: true,
-    },
-  });
-
-  if (servicesList.length === 0) {
+  if (worker_id && !worker) {
     throw new BadRequestException({
-      message: 'Los servicios seleccionados no existen',
+      message: 'El trabajador no existe',
     });
   }
 
-  // Fecha para la cita manipulada con la hora de ejecución
-  const appointmentDate = setExecutionTimeToDate(date);
+  if (worker) {
+    if (worker.status !== 'ACTIVE') {
+      return {
+        service,
+        worker,
+        availableSlots: [],
+      };
+    }
 
-  // Obtener día de la fecha seleccionada para la consulta 1 = lunes, 7 = domingo
-  const appointmentDay = getCurrentDay(date);
+    if (!worker.worker_service.map((s) => s.service_id).includes(service_id)) {
+      return {
+        service,
+        worker,
+        availableSlots: [],
+      };
+    }
+
+    if (!worker.work_days.includes(appointmentDay)) {
+      return {
+        service,
+        worker,
+        availableSlots: [],
+      };
+    }
+  }
+
+  if (!service) {
+    throw new BadRequestException({
+      message: 'El servicio no existe',
+    });
+  }
 
   // Hora de inicio y fin del mapa de horarios disponibles
   let start: Date = business.open_time_weekday;
   let end: Date = business.close_time_weekday;
-
-  let worker: { name: string; last_name?: string } | null = null;
-
-  // Para guardar los horarios del trabajador seleccionado si existe
-  let breakSlots: string[] = [];
 
   // Verifica si la fecha para el appointment es fin de semana y si el negocio abre
   if (
@@ -113,80 +184,18 @@ export default async function verifyAvailableSlots(
     end = business.close_time_weekend!;
   }
 
-  // if (business.workers.length) {
-  // }
-
-  // Verificar que el trabajador exista y establece el horario según el día
-  // de la fecha para el appointment
-  if (worker_id) {
-    const workerInfo = await prisma.worker.findUnique({
-      where: { id: worker_id, business_id },
-      select: {
-        user: {
-          select: {
-            name: true,
-            last_name: true,
-          },
-        },
-        schedules: {
-          select: {
-            status: true,
-            day: true,
-            start_time: true,
-            end_time: true,
-            break_start_time: true,
-            break_end_time: true,
-          },
-        },
-      },
-    });
-
-    if (!workerInfo) {
-      throw new BadRequestException({ message: 'El trabajador no existe' });
-    }
-
-    worker = {
-      name: workerInfo.user.name,
-      last_name: workerInfo.user.last_name,
-    };
-
-    const schedule = workerInfo.schedules.find(
-      (s) => s.day === appointmentDay,
-    )!;
-
-    if (schedule.status === 'UNACTIVE') {
-      return {
-        services: servicesList,
-        worker: null,
-        availableSlots: [],
-      };
-    }
-
-    if (schedule.break_start_time && schedule.break_end_time) {
-      const duration = differenceInMinutes(
-        schedule.break_start_time,
-        schedule.break_end_time,
-      );
-
-      breakSlots = generateTimeRange(schedule!.break_start_time!, duration);
-    }
-
-    start = schedule.start_time;
-    end = schedule.end_time;
-  }
-
   // Si la consulta es en el mismo día verifica si...
   if (isSameDay(date, new Date())) {
     // La hora es después del cierre, no regresa horarios
     if (isAfter(appointmentDate.getTime(), end.getTime())) {
       return {
-        services: servicesList,
+        service,
         worker,
         availableSlots: [],
       };
     }
 
-    // La hora es después de la apertura, regresa la hora próxima como múltiplo de 10
+    // La hora es después de la apertura, regresa la hora más próxima como múltiplo de 10
     if (isAfter(appointmentDate.getTime(), start.getTime())) {
       start = parseStringToDateTime(getCurrentTimeRounded());
     }
@@ -195,15 +204,11 @@ export default async function verifyAvailableSlots(
   // Mapa de horarios disponibles según horario
   let dayTimeSlots = generateTimeSlots(start, end);
 
-  breakSlots.forEach((key) => {
-    dayTimeSlots[key] = 'break';
-  });
-
   // Obtener las citas del día, pendientes sin expirar o confirmadas y de el trabajador si existe
   const appointments = await prisma.appointment.findMany({
     where: {
       business_id,
-      worker_id: worker_id ?? undefined,
+      // worker_id: worker_id ?? undefined,
       date: {
         gte: startOfDay(date),
         lte: endOfDay(date),
@@ -236,13 +241,9 @@ export default async function verifyAvailableSlots(
     app.slots.forEach((hour) => (dayTimeSlots[hour] = app.id)),
   );
 
-  const slotsRequired = servicesList.reduce((acc, val) => {
-    const { duration } = val;
-    const count = getRequiredSlotCount(duration);
-    return acc + count;
-  }, 0);
+  const slotsRequired = getRequiredSlotCount(service.duration);
 
   const availableSlots = getFreeSlots(dayTimeSlots, slotsRequired);
 
-  return { services: servicesList, worker, availableSlots };
+  return { service, worker, availableSlots };
 }

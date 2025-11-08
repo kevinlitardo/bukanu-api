@@ -62,6 +62,7 @@ export async function getBusinessDataUseCase(
                 last_name: true,
               },
             },
+            work_days: true,
             // Info de los servicios que puede dar
             worker_service: {
               where: {
@@ -79,17 +80,6 @@ export async function getBusinessDataUseCase(
                     price: true,
                   },
                 },
-              },
-            },
-            // Horarios que tiene asignados
-            schedules: {
-              select: {
-                status: true,
-                day: true,
-                start_time: true,
-                break_start_time: true,
-                break_end_time: true,
-                end_time: true,
               },
             },
           },

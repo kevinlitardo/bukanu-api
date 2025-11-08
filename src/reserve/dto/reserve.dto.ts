@@ -17,7 +17,7 @@ export class ReserveDto {
   worker_id?: string;
 
   @IsString()
-  service: string;
+  service_id: string;
 
   @IsDate()
   @Transform(({ value }) => new Date(value))
@@ -28,9 +28,4 @@ export class ReserveDto {
     message: 'Debe ser un formato de tiempo válido, Ej: 08:00',
   })
   start_time: string;
-
-  @IsString()
-  @MaxLength(200, { message: 'Máximo 200 caracteres' })
-  @IsOptional()
-  comments?: string;
 }

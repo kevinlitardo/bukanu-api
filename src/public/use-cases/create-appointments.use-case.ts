@@ -15,6 +15,7 @@ export async function createAppointmentsUseCase(
       start_time: parseStringToDateTime('12:00'),
       end_time: parseStringToDateTime('12:40'),
       client_name: 'Jhon Doe',
+      service_id: '',
     },
     {
       business_id: 'cmgd3eqh00002lro8duatfnfx',
@@ -24,6 +25,7 @@ export async function createAppointmentsUseCase(
       start_time: parseStringToDateTime('13:20'),
       end_time: parseStringToDateTime('14:00'),
       client_name: 'Jhon Doe',
+      service_id: '',
     },
     {
       business_id: 'cmgd3eqh00002lro8duatfnfx',
@@ -33,6 +35,7 @@ export async function createAppointmentsUseCase(
       start_time: parseStringToDateTime('14:10'),
       end_time: parseStringToDateTime('14:50'),
       client_name: 'Jhon Doe',
+      service_id: '',
     },
     // {
     //   business_id: 'cmgd3eqh00002lro8duatfnfx',
@@ -53,6 +56,7 @@ export async function createAppointmentsUseCase(
       start_time: parseStringToDateTime('15:00'),
       end_time: parseStringToDateTime('15:30'),
       client_name: 'Jhon Doe',
+      service_id: '',
     },
     {
       business_id: 'cmgd3eqh00002lro8duatfnfx',
@@ -63,6 +67,7 @@ export async function createAppointmentsUseCase(
       start_time: parseStringToDateTime('15:40'),
       end_time: parseStringToDateTime('16:20'),
       client_name: 'Jhon Doe',
+      service_id: '',
     },
   ];
 

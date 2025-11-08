@@ -10,7 +10,7 @@ export class GetAvailabilityDto {
   worker_id?: string;
 
   @IsString()
-  service: string;
+  service_id: string;
 
   @IsDate()
   @Transform(({ value }) => new Date(value))

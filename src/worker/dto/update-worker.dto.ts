@@ -1,25 +1,15 @@
-import { Type } from 'class-transformer';
-import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  IsArray,
-  IsString,
-  Length,
-  ValidateNested,
-} from 'class-validator';
-import { ScheduleDto } from './schedule.dto';
+import { ArrayMinSize, IsArray, IsIn, IsString, Length } from 'class-validator';
 
 export class UpdateWorkerDto {
   @IsString()
   @Length(1, 60)
   slug: string;
 
-  @IsArray()
-  @ArrayMinSize(7, { message: 'Debes enviar los 7 días de la semana' })
-  @ArrayMaxSize(7, { message: 'Solo se permiten los 7 días de la semana' })
-  @ValidateNested({ each: true })
-  @Type(() => ScheduleDto)
-  schedules: ScheduleDto[];
+  @IsIn([1, 2, 3, 4, 5, 6, 7], {
+    each: true,
+    message: 'Los días deben ser números entre 1 y 7',
+  })
+  work_days: number[];
 
   @IsArray()
   @IsString({ each: true })

@@ -18,18 +18,17 @@ export default async function reserveUseCase(
   // Validar que no tenga más citas agendadas con el mismo negocio
   // Validar en caso que el negocio requiera anticipo y guardar como pending
 
-  const { business_id, worker_id, service, date, start_time, comments } = data;
+  const { business_id, worker_id, service_id, date, start_time } = data;
 
-  const {
-    services: servicesList,
-    worker,
-    availableSlots,
-  } = await verifyAvailableSlots(prisma, {
-    business_id,
-    worker_id,
-    service,
-    date,
-  });
+  const { service, worker, availableSlots } = await verifyAvailableSlots(
+    prisma,
+    {
+      business_id,
+      worker_id,
+      service_id,
+      date,
+    },
+  );
 
   if (!availableSlots.includes(start_time)) {
     throw new BadRequestException({
@@ -38,10 +37,7 @@ export default async function reserveUseCase(
   }
 
   const startTime = parseStringToDateTime(start_time);
-  const duration = servicesList.reduce((acc, val) => {
-    return acc + val.duration;
-  }, 0);
-  const startTimePlusDuration = addMinutes(startTime, duration);
+  const startTimePlusDuration = addMinutes(startTime, service?.duration!);
   const end_time = parseStringToDateTime(formatTime(startTimePlusDuration));
 
   await prisma.appointment.create({
@@ -50,18 +46,15 @@ export default async function reserveUseCase(
       date,
       start_time: startTime,
       end_time,
-      comments,
       client_name: `${user.firstName} ${user.lastName ?? ''}`.trim(),
       worker_name: worker
-        ? `${worker.name} ${worker?.last_name}`.trim()
+        ? `${worker.user.name} ${worker.user.last_name}`.trim()
         : undefined,
 
       business_id,
       worker_id,
       user_id: dbUser.id,
-      appointment_services: {
-        create: { service_id: service },
-      },
+      service_id,
     },
   });
 }

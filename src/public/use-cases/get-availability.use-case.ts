@@ -6,6 +6,6 @@ export async function getAvailabilityUseCase(
   prisma: PrismaService,
   data: GetAvailabilityDto,
 ): Promise<string[]> {
-  const { availableSlots } = await verifyAvailableSlots(prisma, { ...data });
+  const { availableSlots } = await verifyAvailableSlots(prisma, data);
   return availableSlots;
 }

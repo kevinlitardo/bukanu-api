@@ -1,7 +1,6 @@
 import { User } from '@clerk/express';
 import { BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { formatTime } from 'src/common/utils/availability';
 
 export async function getWorkerByIdUseCase(
   prisma: PrismaService,
@@ -28,16 +27,7 @@ export async function getWorkerByIdUseCase(
           email: true,
         },
       },
-      schedules: {
-        select: {
-          status: true,
-          day: true,
-          start_time: true,
-          break_start_time: true,
-          break_end_time: true,
-          end_time: true,
-        },
-      },
+      work_days: true,
       worker_service: {
         select: {
           service_id: true,
@@ -50,19 +40,10 @@ export async function getWorkerByIdUseCase(
     throw new BadRequestException({ message: 'El trabajador no existe' });
   }
 
-  const { schedules, worker_service, ...rest } = worker;
+  const { worker_service, ...rest } = worker;
 
   const dataFixed = {
     ...rest,
-    schedules: schedules.map((s) => ({
-      ...s,
-      start_time: formatTime(s.start_time),
-      end_time: formatTime(s.end_time),
-      break_start_time: s.break_start_time
-        ? formatTime(s.break_start_time)
-        : null,
-      break_end_time: s.break_end_time ? formatTime(s.break_end_time) : null,
-    })),
     services: worker_service.map((service) => service.service_id),
   };
 
